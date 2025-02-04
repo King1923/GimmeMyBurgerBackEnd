@@ -27,5 +27,8 @@ namespace LearningAPI
 		public required DbSet<Category> Categories { get; set; }
 
 		public required DbSet<Cart> Carts { get; set; }
+
+		public required DbSet<Inventory> Inventories { get; set; }
+		public required DbSet<Promotion> Promotions { get; set; }
 	}
 }

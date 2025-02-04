@@ -73,3 +73,78 @@ Authorization: Bearer {{token}}
 GET {{LearningAPI_HostAddress}}/product/0
 
 ###
+
+GET {{LearningAPI_HostAddress}}/inventory?search=
+
+###
+
+POST {{LearningAPI_HostAddress}}/inventory
+Content-Type: application/json
+
+{
+  "item" : "Buns",
+  "quantity" : 201
+}
+
+###
+
+@id=0
+GET {{LearningAPI_HostAddress}}/inventory/10
+
+###
+
+PUT {{LearningAPI_HostAddress}}/inventory/10
+Content-Type: application/json
+
+{
+  "item" : "Beef Patty",
+  "quantity" : 24
+}
+
+###
+
+DELETE {{LearningAPI_HostAddress}}/inventory/2
+
+###
+
+@search=string
+GET {{LearningAPI_HostAddress}}/promotion?search=
+
+###
+
+POST {{LearningAPI_HostAddress}}/promotion
+Content-Type: application/json
+
+{
+  "Title" : "20% Off With Any Fries Bought!",
+  "Description": "Get 20% off any order with any fries bought"
+}
+
+###
+
+GET {{LearningAPI_HostAddress}}/promotion/10
+
+###
+
+PUT {{LearningAPI_HostAddress}}/promotion/3
+Content-Type: application/json
+
+{
+  "Title" : "50% Off With Any Nuggets Bought!",
+  "Description": "Get 50% off any order with any nuggets bought"
+}
+
+###
+
+DELETE {{LearningAPI_HostAddress}}/promotion/10
+
+###
+
+POST {{LearningAPI_HostAddress}}/file/upload
+Content-Type: application/json
+
+{
+  //IFormFile
+}
+
+###
