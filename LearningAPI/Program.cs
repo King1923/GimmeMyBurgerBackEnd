@@ -1,4 +1,5 @@
 using LearningAPI;
+using LearningAPI.Helpers;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -9,6 +10,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddDbContext<MyDbContext>();
+builder.Services.AddMemoryCache();
+builder.Services.AddTransient<EmailService>();
 
 // Add CORS policy
 var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>();

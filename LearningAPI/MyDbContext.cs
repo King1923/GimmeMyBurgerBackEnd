@@ -16,9 +16,6 @@ namespace LearningAPI
             }
         }
 
-        public required DbSet<Tutorial> Tutorials { get; set; }
-
-        public required DbSet<User> Users { get; set; }
 
 		public required DbSet<Product> Products { get; set; }
 
@@ -27,5 +24,9 @@ namespace LearningAPI
 		public required DbSet<Category> Categories { get; set; }
 
 		public required DbSet<Cart> Carts { get; set; }
-	}
+
+        public required DbSet<Reward> Rewards { get; set; }
+
+        public required DbSet<User> Users { get; set; }
+    }
 }

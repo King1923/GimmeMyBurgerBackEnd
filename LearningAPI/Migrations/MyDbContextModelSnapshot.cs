@@ -16,7 +16,7 @@ namespace LearningAPI.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.11")
+                .HasAnnotation("ProductVersion", "8.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
             modelBuilder.Entity("LearningAPI.Models.Cart", b =>
@@ -157,7 +157,7 @@ namespace LearningAPI.Migrations
                     b.ToTable("Products");
                 });
 
-            modelBuilder.Entity("LearningAPI.Models.Tutorial", b =>
+            modelBuilder.Entity("LearningAPI.Models.Reward", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -171,9 +171,20 @@ namespace LearningAPI.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("varchar(500)");
 
+                    b.Property<DateTime>("ExpiryDate")
+                        .HasColumnType("datetime");
+
                     b.Property<string>("ImageFile")
-                        .HasMaxLength(20)
-                        .HasColumnType("varchar(20)");
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<int>("PointsRequired")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RewardType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -190,7 +201,7 @@ namespace LearningAPI.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Tutorials");
+                    b.ToTable("Rewards");
                 });
 
             modelBuilder.Entity("LearningAPI.Models.User", b =>
@@ -202,20 +213,53 @@ namespace LearningAPI.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime");
 
+                    b.Property<string>("DeliveryAddress")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("varchar(150)");
+
+                    b.Property<DateTime>("DoB")
+                        .HasColumnType("datetime");
+
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("varchar(50)");
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
 
-                    b.Property<string>("Name")
+                    b.Property<string>("FName")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("varchar(50)");
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("LName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("Mobile")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .HasColumnType("varchar(15)");
 
                     b.Property<string>("Password")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
+
+                    b.Property<int>("PaymentMethodId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PointsEarned")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PostalCode")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Role")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RoleId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime");
@@ -255,10 +299,10 @@ namespace LearningAPI.Migrations
                     b.Navigation("Category");
                 });
 
-            modelBuilder.Entity("LearningAPI.Models.Tutorial", b =>
+            modelBuilder.Entity("LearningAPI.Models.Reward", b =>
                 {
                     b.HasOne("LearningAPI.Models.User", "User")
-                        .WithMany("Tutorials")
+                        .WithMany("Rewards")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -268,7 +312,7 @@ namespace LearningAPI.Migrations
 
             modelBuilder.Entity("LearningAPI.Models.User", b =>
                 {
-                    b.Navigation("Tutorials");
+                    b.Navigation("Rewards");
                 });
 #pragma warning restore 612, 618
         }
