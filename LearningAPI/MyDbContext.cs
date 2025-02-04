@@ -28,7 +28,7 @@ namespace LearningAPI
         public required DbSet<Reward> Rewards { get; set; }
 
         public required DbSet<User> Users { get; set; }
-    }
+    
 
 		public required DbSet<Inventory> Inventories { get; set; }
 		public required DbSet<Promotion> Promotions { get; set; }

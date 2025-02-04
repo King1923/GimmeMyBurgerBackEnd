@@ -11,11 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LearningAPI.Migrations
 {
     [DbContext(typeof(MyDbContext))]
-<<<<<<<< HEAD:LearningAPI/Migrations/20250204125910_InitialCreate.Designer.cs
-    [Migration("20250204125910_InitialCreate")]
-========
-    [Migration("20250204105943_InitialCreate")]
->>>>>>>> main:LearningAPI/Migrations/20250204105943_InitialCreate.Designer.cs
+    [Migration("20250204131242_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -189,7 +185,6 @@ namespace LearningAPI.Migrations
                     b.ToTable("Products");
                 });
 
-<<<<<<<< HEAD:LearningAPI/Migrations/20250204125910_InitialCreate.Designer.cs
             modelBuilder.Entity("LearningAPI.Models.Promotion", b =>
                 {
                     b.Property<int>("Id")
@@ -221,10 +216,7 @@ namespace LearningAPI.Migrations
                     b.ToTable("Promotions");
                 });
 
-            modelBuilder.Entity("LearningAPI.Models.Tutorial", b =>
-========
             modelBuilder.Entity("LearningAPI.Models.Reward", b =>
->>>>>>>> main:LearningAPI/Migrations/20250204105943_InitialCreate.Designer.cs
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()

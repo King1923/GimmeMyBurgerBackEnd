@@ -182,7 +182,6 @@ namespace LearningAPI.Migrations
                     b.ToTable("Products");
                 });
 
-<<<<<<< HEAD
             modelBuilder.Entity("LearningAPI.Models.Promotion", b =>
                 {
                     b.Property<int>("Id")
@@ -214,10 +213,7 @@ namespace LearningAPI.Migrations
                     b.ToTable("Promotions");
                 });
 
-            modelBuilder.Entity("LearningAPI.Models.Tutorial", b =>
-=======
             modelBuilder.Entity("LearningAPI.Models.Reward", b =>
->>>>>>> main
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()

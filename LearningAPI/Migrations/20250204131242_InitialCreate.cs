@@ -234,14 +234,10 @@ namespace LearningAPI.Migrations
                 name: "Orders");
 
             migrationBuilder.DropTable(
-<<<<<<<< HEAD:LearningAPI/Migrations/20250204125910_InitialCreate.cs
                 name: "Promotions");
 
             migrationBuilder.DropTable(
-                name: "Tutorials");
-========
                 name: "Rewards");
->>>>>>>> main:LearningAPI/Migrations/20250204105943_InitialCreate.cs
 
             migrationBuilder.DropTable(
                 name: "Products");
