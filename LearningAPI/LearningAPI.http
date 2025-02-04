@@ -1,0 +1,75 @@
+﻿@LearningAPI_HostAddress = https://localhost:7004
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1laWQiOiIyIiwidW5pcXVlX25hbWUiOiJMaSBIYWl5dW4iLCJlbWFpbCI6ImxpX2hhaXl1bkBueXAuZWR1LnNnIiwibmJmIjoxNzM2ODU4ODIxLCJleHAiOjE3Mzk0NTA4MjEsImlhdCI6MTczNjg1ODgyMX0.XYt869ikY3Y9ajM9T45iXxHTcRzWrwfJOD-DfOzse6s
+
+GET {{LearningAPI_HostAddress}}/tutorial?search=
+
+
+
+###
+
+POST {{LearningAPI_HostAddress}}/tutorial
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+"productId": 0,
+  "sku": 0,
+  "name": "string",
+  "price": 1110,
+  "description": "string",
+  "imageFile": "string",
+  "stock": 0
+}
+
+###
+
+GET {{LearningAPI_HostAddress}}/product/1
+
+###
+
+PUT {{LearningAPI_HostAddress}}/tutorial/1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+ "title": "My Story",
+ "description": "Your Song ❤"
+}
+
+###
+
+DELETE {{LearningAPI_HostAddress}}/product/3
+Authorization: Bearer {{token}}
+
+###
+
+POST {{LearningAPI_HostAddress}}/user/register
+Content-Type: application/json
+
+{
+ "name": "Li Haiyun",
+ "email": "li_haiyun@nyp.edu.sg",
+ "password": "password123"
+}
+
+###
+
+POST {{LearningAPI_HostAddress}}/user/login
+Content-Type: application/json
+
+{
+ "email": "li_haiyun@nyp.edu.sg",
+ "password": "password123"
+}
+
+
+###
+
+GET {{LearningAPI_HostAddress}}/user/auth
+Authorization: Bearer {{token}}
+
+###
+
+GET {{LearningAPI_HostAddress}}/product/0
+
+###
