@@ -148,3 +148,12 @@ Content-Type: application/json
 }
 
 ###
+
+POST {{LearningAPI_HostAddress}}/inventory
+Content-Type: application/json
+
+{
+  //Inventory
+}
+
+###
