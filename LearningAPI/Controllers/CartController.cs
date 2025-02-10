@@ -17,72 +17,105 @@ namespace LearningAPI.Controllers
 			_context = context;
 		}
 
+        // Get all cart items for a specific user
+        [HttpGet, Authorize]
+        public IActionResult GetUserCart()
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
 
-		[HttpGet("{id}")]
-		public IActionResult GetCart(int id)
+            var cartItems = _context.Carts
+                .Where(c => c.UserId == userId)
+                .Include(c => c.Product)
+                .Select(c => new
+                {
+                    c.CartId,
+                    c.ProductId,
+                    ProductName = c.Product.Name,
+                    c.Quantity,
+                    c.TotalAmount,
+                    Price = c.Product.Price,         // Include product price
+                    Category = c.Product.Category,   // Include product category
+                    ImageFile = c.Product.ImageFile  // Include product image
+                })
+                .ToList();
+
+            return Ok(cartItems);
+        }
+
+        // Add an item to the cart
+        [HttpPost, Authorize]
+        public IActionResult AddToCart([FromBody] Cart cart)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+
+            // Ensure the product exists
+            var product = _context.Products.Find(cart.ProductId);
+            if (product == null)
+            {
+                return NotFound("Product not found.");
+            }
+
+            var existingCartItem = _context.Carts
+                .FirstOrDefault(c => c.UserId == userId && c.ProductId == cart.ProductId);
+
+            if (existingCartItem != null)
+            {
+                existingCartItem.Quantity += cart.Quantity;
+            }
+            else
+            {
+                var newCartItem = new Cart
+                {
+                    UserId = userId,
+                    ProductId = cart.ProductId,
+                    Quantity = cart.Quantity
+                };
+
+                _context.Carts.Add(newCartItem);
+            }
+
+            _context.SaveChanges();
+            return Ok(new { message = "Item added to cart successfully!" });
+        }
+
+        // Update the quantity of an item in the cart
+        [HttpPut("{cartId}"), Authorize]
+		public IActionResult UpdateCart(int cartId, [FromBody] Cart cart)
 		{
-			Cart? cart = _context.Carts
-				.SingleOrDefault(t => t.CartId == id);
+			var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
 
-			if (cart == null)
+			var existingCartItem = _context.Carts
+				.FirstOrDefault(c => c.CartId == cartId && c.UserId == userId);
+
+			if (existingCartItem == null)
 			{
-				return NotFound();
+				return NotFound("Cart item not found.");
 			}
 
-			var data = new
-			{
-				cart.CartId,
-				cart.Quantity,
-				cart.TotalAmount
-			};
-
-			return Ok(data);
-		}
-
-		[HttpPost, Authorize]
-		public IActionResult AddCart(Cart cart)
-		{
-			var now = DateTime.Now;
-			var myCart = new Cart()
-			{
-				TotalAmount = cart.TotalAmount,
-				Quantity = cart.Quantity
-			};
-
-			_context.Carts.Add(myCart);
+			existingCartItem.Quantity = cart.Quantity;
 			_context.SaveChanges();
 
-			return Ok(myCart);
+			return Ok("Cart updated.");
 		}
 
-		[HttpPut("{id}"), Authorize]
-		public IActionResult UpdateCart(int id, Cart cart)
+		// Remove an item from the cart
+		[HttpDelete("{cartId}"), Authorize]
+		public IActionResult DeleteCartItem(int cartId)
 		{
-			var myCart = _context.Carts.Find(id);
-			if (myCart == null)
+			var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+
+			var cartItem = _context.Carts
+				.FirstOrDefault(c => c.CartId == cartId && c.UserId == userId);
+
+			if (cartItem == null)
 			{
-				return NotFound();
+				return NotFound("Cart item not found.");
 			}
 
-			myCart.TotalAmount= cart.TotalAmount;
-			myCart.Quantity= cart.Quantity;
-
+			_context.Carts.Remove(cartItem);
 			_context.SaveChanges();
-			return Ok();
-		}
 
-		[HttpDelete("{id}"), Authorize]
-		public IActionResult DeleteCart(int id)
-		{
-			var myCart = _context.Carts.Find(id);
-			if (myCart == null)
-			{
-				return NotFound();
-			}
-
-			_context.Carts.Remove(myCart);
-			_context.SaveChanges();
-			return Ok();
+			return Ok("Item removed from cart.");
 		}
 	}
 }

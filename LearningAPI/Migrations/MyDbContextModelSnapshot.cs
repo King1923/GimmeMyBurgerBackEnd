@@ -31,9 +31,6 @@ namespace LearningAPI.Migrations
                     b.Property<int>("Quantity")
                         .HasColumnType("int");
 
-                    b.Property<decimal>("TotalAmount")
-                        .HasColumnType("decimal(10,2)");
-
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 

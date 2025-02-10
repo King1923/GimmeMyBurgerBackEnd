@@ -10,26 +10,26 @@ namespace LearningAPI.Models
 		[Key]
 		public int CartId { get; set; }
 
-		// Foreign key for User
-		[Required]
-		public int UserId { get; set; }
-
 		// Foreign key for Product
 		[Required]
 		public int ProductId { get; set; }
 
+		// Foreign key for User
+		[Required]
+		public int UserId { get; set; }
+
 		[Required]
 		public int Quantity { get; set; }
 
-		[Required, Column(TypeName = "decimal(10,2)")]
-		public decimal TotalAmount { get; set; }
+		// Computed field (not stored in DB)
+		[NotMapped]
+		public decimal TotalAmount => (Product != null ? Product.Price : 0) * Quantity;
 
 		// Navigation properties
 		[JsonIgnore]
 		[ForeignKey("UserId")]
 		public User? User { get; set; }
 
-		[JsonIgnore]
 		[ForeignKey("ProductId")]
 		public Product? Product { get; set; }
 	}
