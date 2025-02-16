@@ -32,5 +32,7 @@ namespace LearningAPI
 		public required DbSet<Inventory> Inventories { get; set; }
 
 		public required DbSet<Promotion> Promotions { get; set; }
+
+        public required DbSet<Marker> Markers { get; set; }
 	}
 }
