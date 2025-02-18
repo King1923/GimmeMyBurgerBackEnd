@@ -58,5 +58,8 @@ namespace LearningAPI.Models
         [JsonIgnore]
         public List<Reward>? Rewards { get; set; }
 
+        [JsonIgnore]
+        public List<Address>? Addresses { get; set; } = new List<Address>();
+
     }
 }

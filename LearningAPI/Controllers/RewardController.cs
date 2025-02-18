@@ -19,6 +19,7 @@ namespace LearningAPI.Controllers
             _logger = logger;
         }
 
+
         // GET /reward?search=...
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<Reward>), StatusCodes.Status200OK)]

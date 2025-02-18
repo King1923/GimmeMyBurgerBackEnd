@@ -34,5 +34,7 @@ namespace LearningAPI
 		public required DbSet<Promotion> Promotions { get; set; }
 
         public required DbSet<Marker> Markers { get; set; }
-	}
+
+        public required DbSet<Address> Addresses { get; set; }
+    }
 }

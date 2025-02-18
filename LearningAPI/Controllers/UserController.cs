@@ -8,6 +8,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using LearningAPI.Helpers;
+using System.Security.Cryptography;
 
 namespace LearningAPI.Controllers
 {
@@ -30,6 +31,14 @@ namespace LearningAPI.Controllers
             _emailService = emailService;
         }
 
+        [HttpGet]
+        public IActionResult GetAll()   
+        {
+            IQueryable<User> result = _context.Users;
+            var list = result.OrderByDescending(x => x.CreatedAt).ToList();
+            return Ok(list);
+        }
+
         [HttpPost("register")]
         public IActionResult Register(RegisterRequest request)
         {
@@ -41,9 +50,8 @@ namespace LearningAPI.Controllers
                 request.Email = request.Email.Trim().ToLower();
                 request.Password = request.Password.Trim();
                 request.Mobile = request.Mobile.Trim();
-                request.DeliveryAddress = request.DeliveryAddress.Trim();
 
-                // Validate Role (it should be either "Customer" or "Staff")
+                // Validate Role (it should be either "User" or "Staff")
                 var allowedRoles = new List<string> { "User", "Staff" };
                 if (!allowedRoles.Contains(request.Role))
                 {
@@ -72,9 +80,7 @@ namespace LearningAPI.Controllers
                     Email = request.Email,
                     Password = passwordHash,
                     Mobile = request.Mobile,
-                    DeliveryAddress = request.DeliveryAddress,
                     DoB = request.DoB,
-                    PostalCode = request.PostalCode,
                     Role = roleType,  // Assign the RoleType enum (User or Staff)
                     CreatedAt = now,
                     UpdatedAt = now
@@ -91,6 +97,7 @@ namespace LearningAPI.Controllers
                 return StatusCode(500);
             }
         }
+
 
         [HttpPost("login")]
         public IActionResult Login(LoginRequest request)
@@ -240,6 +247,75 @@ namespace LearningAPI.Controllers
             }
         }
 
+        [HttpPut("admin/{id}"), Authorize(Roles = "Staff")]
+        public IActionResult AdminUpdateUser(int id, UpdateUserRequest request)
+        {
+            try
+            {
+                // Find the user by ID
+                var userToUpdate = _context.Users.Find(id);
+                if (userToUpdate == null)
+                {
+                    return NotFound(new { message = "User not found." });
+                }
+
+                // Update email if provided and changed
+                if (!string.IsNullOrWhiteSpace(request.Email) &&
+                    request.Email.Trim().ToLower() != userToUpdate.Email)
+                {
+                    var existingUser = _context.Users.FirstOrDefault(x => x.Email == request.Email.Trim().ToLower());
+                    if (existingUser != null)
+                    {
+                        return BadRequest(new { message = "Email already exists." });
+                    }
+                    userToUpdate.Email = request.Email.Trim().ToLower();
+                }
+
+                // Update other fields if provided
+                if (!string.IsNullOrWhiteSpace(request.FName))
+                {
+                    userToUpdate.FName = request.FName.Trim();
+                }
+                if (!string.IsNullOrWhiteSpace(request.LName))
+                {
+                    userToUpdate.LName = request.LName.Trim();
+                }
+                if (!string.IsNullOrWhiteSpace(request.Mobile))
+                {
+                    userToUpdate.Mobile = request.Mobile.Trim();
+                }
+                if (!string.IsNullOrWhiteSpace(request.DeliveryAddress))
+                {
+                    userToUpdate.DeliveryAddress = request.DeliveryAddress.Trim();
+                }
+                if (!string.IsNullOrWhiteSpace(request.Password))
+                {
+                    // Hash the new password before saving
+                    userToUpdate.Password = BCrypt.Net.BCrypt.HashPassword(request.Password.Trim());
+                }
+                if (request.PostalCode.HasValue)
+                {
+                    userToUpdate.PostalCode = request.PostalCode.Value;
+                }
+                if (request.DoB.HasValue)
+                {
+                    userToUpdate.DoB = request.DoB.Value;
+                }
+
+                userToUpdate.UpdatedAt = DateTime.Now;
+                _context.SaveChanges();
+
+                return Ok(new { message = "User details updated successfully by admin." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error when updating user details by admin");
+                return StatusCode(500, new { message = "Internal server error" });
+            }
+        }
+
+
+
         [HttpDelete("{id}"), Authorize]
         public IActionResult DeleteUser(int id)
         {
@@ -271,6 +347,33 @@ namespace LearningAPI.Controllers
                 return StatusCode(500, new { message = "Internal server error" });
             }
         }
+
+
+        [HttpDelete("admin/{id}"), Authorize(Roles = "Staff")]
+        public IActionResult AdminDeleteUser(int id)
+        {
+            try
+            {
+                // Find the user by ID
+                var myUser = _context.Users.Find(id);
+                if (myUser == null)
+                {
+                    return NotFound(new { message = "User not found." });
+                }
+
+                // Remove the user from the database
+                _context.Users.Remove(myUser);
+                _context.SaveChanges();
+
+                return Ok(new { message = "User deleted successfully." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error when deleting user");
+                return StatusCode(500, new { message = "Internal server error" });
+            }
+        }
+
 
         [HttpGet("{id}")]
         public async Task<ActionResult<User>> GetUserById(int id)
@@ -311,7 +414,9 @@ namespace LearningAPI.Controllers
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Name, user.FName),
-                new Claim(ClaimTypes.Email, user.Email)
+                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(ClaimTypes.Role, user.Role.ToString())
+
             };
 
             var tokenDescriptor = new SecurityTokenDescriptor
@@ -325,32 +430,69 @@ namespace LearningAPI.Controllers
             string token = tokenHandler.WriteToken(securityToken);
             return token;
         }
+        // Request model for requesting a reset code.
         public class ResetRequest
         {
-            public int UserId { get; set; }
+            public string Email { get; set; }
         }
 
+        // Request model for verifying the reset code.
+        public class ResetCodeVerificationRequest
+        {
+            public string Email { get; set; }
+            public string Code { get; set; }
+        }
 
+        // Request model for resetting the password.
+        public class ResetPasswordRequest
+        {
+            public string Email { get; set; }
+            public string NewPassword { get; set; }
+        }
+
+        // Helper method to generate a secure 6-digit reset code.
+        private string GenerateSecureResetCode()
+        {
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                var bytes = new byte[4];
+                rng.GetBytes(bytes);
+                int code = BitConverter.ToInt32(bytes, 0) % 900000;
+                code = Math.Abs(code) + 100000; // Ensures a 6-digit number.
+                return code.ToString("D6");
+            }
+        }
+
+        // POST: /User/request-password-reset
         [HttpPost("request-password-reset")]
         public IActionResult RequestPasswordReset([FromBody] ResetRequest request)
         {
             try
             {
-                // Retrieve the user.
-                var user = _context.Users.Find(request.UserId);
+                // Validate that an email is provided.
+                if (string.IsNullOrWhiteSpace(request.Email))
+                {
+                    return BadRequest(new { message = "Email is required." });
+                }
+
+                // Normalize the email.
+                string email = request.Email.Trim().ToLower();
+
+                // Retrieve the user by email.
+                var user = _context.Users.FirstOrDefault(x => x.Email == email);
                 if (user == null)
                 {
                     return NotFound(new { message = "User not found." });
                 }
 
-                // Generate a random 6-digit reset code.
-                var random = new Random();
-                var resetCode = random.Next(100000, 999999).ToString();
+                // Generate a secure 6-digit reset code.
+                var resetCode = GenerateSecureResetCode();
 
-                // Store the reset code securely with an expiration (e.g., using IMemoryCache)
-                _cache.Set($"Reset_{user.Id}", resetCode, TimeSpan.FromMinutes(10));
+                // Store the reset code securely with an expiration (10 minutes)
+                // using the normalized email as the cache key.
+                _cache.Set($"Reset_{email}", resetCode, TimeSpan.FromMinutes(10));
 
-                // Send email with the reset code using EmailService.
+                // Send email with the reset code using the EmailService.
                 _emailService.SendResetEmail(user.Email, resetCode);
 
                 return Ok(new { message = "Password reset code sent successfully." });
@@ -363,23 +505,32 @@ namespace LearningAPI.Controllers
         }
 
 
-
-
+        // POST: /User/verify-reset-code
         [HttpPost("verify-reset-code")]
         public IActionResult VerifyResetCode([FromBody] ResetCodeVerificationRequest request)
         {
             try
             {
-                // Retrieve the stored reset code using the key "Reset_{UserId}".
-                if (!_cache.TryGetValue($"Reset_{request.UserId}", out string storedCode))
+                // Validate that an email is provided.
+                if (string.IsNullOrWhiteSpace(request.Email))
+                {
+                    return BadRequest(new { message = "Email is required." });
+                }
+
+                // Normalize the email.
+                string email = request.Email.Trim().ToLower();
+
+                // Retrieve the stored reset code using the key "Reset_{email}".
+                if (!_cache.TryGetValue($"Reset_{email}", out string storedCode))
                 {
                     return BadRequest(new { message = "Reset code expired or not found." });
                 }
 
+                // Compare the provided code with the stored code.
                 if (request.Code == storedCode)
                 {
                     // Clear the stored code now that it's been used.
-                    _cache.Remove($"Reset_{request.UserId}");
+                    _cache.Remove($"Reset_{email}");
                     return Ok(new { message = "Reset code verified successfully." });
                 }
                 else
@@ -394,25 +545,31 @@ namespace LearningAPI.Controllers
             }
         }
 
-        public class ResetCodeVerificationRequest
-        {
-            public int UserId { get; set; }
-            public string Code { get; set; }
-        }
 
 
 
+        // POST: /User/reset-password
         [HttpPost("reset-password")]
         public IActionResult ResetPassword([FromBody] ResetPasswordRequest request)
         {
             try
             {
-                // Retrieve the user.
-                var user = _context.Users.Find(request.UserId);
+                // Validate that an email is provided.
+                if (string.IsNullOrWhiteSpace(request.Email))
+                {
+                    return BadRequest(new { message = "Email is required." });
+                }
+
+                // Normalize the email.
+                string email = request.Email.Trim().ToLower();
+
+                // Retrieve the user by email.
+                var user = _context.Users.FirstOrDefault(x => x.Email == email);
                 if (user == null)
                 {
-                    return NotFound(new { message = "User not found." });
+                    return NotFound(new { message = "Email not found." });
                 }
+
                 // Hash the new password.
                 user.Password = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
                 user.UpdatedAt = DateTime.Now;
@@ -427,11 +584,45 @@ namespace LearningAPI.Controllers
             }
         }
 
-        public class ResetPasswordRequest
+        [HttpPost("change-password"), Authorize]
+        public IActionResult ChangePassword([FromBody] ChangePasswordRequest request)
         {
-            public int UserId { get; set; }
-            public string NewPassword { get; set; }
+            try
+            {
+                int userId = GetUserId();
+                var user = _context.Users.Find(userId);
+                if (user == null)
+                {
+                    return NotFound(new { message = "User not found." });
+                }
+                // Verify the current password.
+                bool valid = BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.Password);
+                if (!valid)
+                {
+                    return BadRequest(new { message = "Current password is incorrect." });
+                }
+                // Update password
+                user.Password = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+                user.UpdatedAt = DateTime.Now;
+                _context.SaveChanges();
+                return Ok(new { message = "Password changed successfully." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error changing password.");
+                return StatusCode(500, new { message = "Error changing password." });
+            }
         }
+
+        public class ChangePasswordRequest
+        {
+            public string CurrentPassword { get; set; }
+            public string NewPassword { get; set; }
+            public string ConfirmPassword { get; set; }
+        }
+
+        
+
 
 
 
