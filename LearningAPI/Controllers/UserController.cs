@@ -97,51 +97,96 @@ namespace LearningAPI.Controllers
                 return StatusCode(500);
             }
         }
-
-
         [HttpPost("login")]
         public IActionResult Login(LoginRequest request)
         {
             try
             {
-                // Trim string values
+                // Trim and normalize input.
                 request.Email = request.Email.Trim().ToLower();
                 request.Password = request.Password.Trim();
 
-                // Look up the user by email
+                // Look up the user by email.
                 var foundUser = _context.Users.FirstOrDefault(x => x.Email == request.Email);
                 if (foundUser == null)
                 {
                     return BadRequest(new { message = "Email or password is not correct." });
                 }
 
-                // Verify the password using BCrypt
+                // Verify password.
                 bool verified = BCrypt.Net.BCrypt.Verify(request.Password, foundUser.Password);
                 if (!verified)
                 {
                     return BadRequest(new { message = "Email or password is not correct." });
                 }
 
-                // Create a JWT token for the authenticated user
-                string accessToken = CreateToken(foundUser);
+                // Generate a secure 6-digit 2FA code.
+                var twoFaCode = GenerateSecureResetCode();
 
-                // Ensure sensitive data (like the hashed password) is not returned
-                foundUser.Password = null;
+                // Generate a temporary token
+                string tempToken = Guid.NewGuid().ToString();
 
-                // Return the user (using the User class directly) along with the token
-                var response = new LoginResponse
-                {
-                    User = foundUser,
-                    AccessToken = accessToken
-                };
-                return Ok(response);
+                // Store the code in cache using the normalized email as key, with a 3-minute expiration.
+                _cache.Set($"2FA_{foundUser.Email}", twoFaCode, TimeSpan.FromMinutes(3));
+
+                // Send the 2FA code via email.
+                _emailService.Send2faEmail(foundUser.Email, twoFaCode);
+
+                // Return the temporary token along with a message.
+                return Ok(new { message = "A 2FA code has been sent to your email. Please verify to complete login." });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error when user login");
+                _logger.LogError(ex, "Error during login");
                 return StatusCode(500);
             }
         }
+
+
+        /*
+                [HttpPost("login")]
+                public IActionResult Login(LoginRequest request)
+                {
+                    try
+                    {
+                        // Trim string values
+                        request.Email = request.Email.Trim().ToLower();
+                        request.Password = request.Password.Trim();
+
+                        // Look up the user by email
+                        var foundUser = _context.Users.FirstOrDefault(x => x.Email == request.Email);
+                        if (foundUser == null)
+                        {
+                            return BadRequest(new { message = "Email or password is not correct." });
+                        }
+
+                        // Verify the password using BCrypt
+                        bool verified = BCrypt.Net.BCrypt.Verify(request.Password, foundUser.Password);
+                        if (!verified)
+                        {
+                            return BadRequest(new { message = "Email or password is not correct." });
+                        }
+
+                        // Create a JWT token for the authenticated user
+                        string accessToken = CreateToken(foundUser);
+
+                        // Ensure sensitive data (like the hashed password) is not returned
+                        foundUser.Password = null;
+
+                        // Return the user (using the User class directly) along with the token
+                        var response = new LoginResponse
+                        {
+                            User = foundUser,
+                            AccessToken = accessToken
+                        };
+                        return Ok(response);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error when user login");
+                        return StatusCode(500);
+                    }
+                } */
 
         [HttpGet("auth"), Authorize]
         public IActionResult Auth()
@@ -217,18 +262,10 @@ namespace LearningAPI.Controllers
                 {
                     myUser.Mobile = request.Mobile.Trim();
                 }
-                if (!string.IsNullOrWhiteSpace(request.DeliveryAddress))
-                {
-                    myUser.DeliveryAddress = request.DeliveryAddress.Trim();
-                }
                 if (!string.IsNullOrWhiteSpace(request.Password))
                 {
                     // Hash the new password before saving
                     myUser.Password = BCrypt.Net.BCrypt.HashPassword(request.Password.Trim());
-                }
-                if (request.PostalCode.HasValue)
-                {
-                    myUser.PostalCode = request.PostalCode.Value;
                 }
                 if (request.DoB.HasValue)
                 {
@@ -246,6 +283,7 @@ namespace LearningAPI.Controllers
                 return StatusCode(500, new { message = "Internal server error" });
             }
         }
+
 
         [HttpPut("admin/{id}"), Authorize(Roles = "Staff")]
         public IActionResult AdminUpdateUser(int id, UpdateUserRequest request)
@@ -284,18 +322,10 @@ namespace LearningAPI.Controllers
                 {
                     userToUpdate.Mobile = request.Mobile.Trim();
                 }
-                if (!string.IsNullOrWhiteSpace(request.DeliveryAddress))
-                {
-                    userToUpdate.DeliveryAddress = request.DeliveryAddress.Trim();
-                }
                 if (!string.IsNullOrWhiteSpace(request.Password))
                 {
                     // Hash the new password before saving
                     userToUpdate.Password = BCrypt.Net.BCrypt.HashPassword(request.Password.Trim());
-                }
-                if (request.PostalCode.HasValue)
-                {
-                    userToUpdate.PostalCode = request.PostalCode.Value;
                 }
                 if (request.DoB.HasValue)
                 {
@@ -313,6 +343,7 @@ namespace LearningAPI.Controllers
                 return StatusCode(500, new { message = "Internal server error" });
             }
         }
+
 
 
 
@@ -621,10 +652,114 @@ namespace LearningAPI.Controllers
             public string ConfirmPassword { get; set; }
         }
 
-        
+        // Request models for 2FA verification
+        public class Verify2FARequest
+        {
+            public string Email { get; set; }
+            public string Code { get; set; }
+        }
 
+        [HttpPost("verify-2fa")]
+        public IActionResult Verify2FA([FromBody] Verify2FARequest request)
+        {
+            try
+            {
+                // Validate email input.
+                if (string.IsNullOrWhiteSpace(request.Email))
+                {
+                    return BadRequest(new { message = "Email is required." });
+                }
 
+                string email = request.Email.Trim().ToLower();
 
+                // Try to retrieve the stored 2FA code from cache.
+                if (!_cache.TryGetValue($"2FA_{email}", out string storedCode))
+                {
+                    return BadRequest(new { message = "2FA code expired or not found." });
+                }
+
+                // Compare the provided code.
+                if (request.Code != storedCode)
+                {
+                    return BadRequest(new { message = "Invalid 2FA code." });
+                }
+
+                // Remove the code from the cache as it's been successfully used.
+                _cache.Remove($"2FA_{email}");
+
+                // Retrieve the user (for token generation).
+                var user = _context.Users.FirstOrDefault(x => x.Email == email);
+                if (user == null)
+                {
+                    return NotFound(new { message = "User not found." });
+                }
+
+                // Generate JWT token.
+                string accessToken = CreateToken(user);
+
+                // Clear sensitive data.
+                user.Password = null;
+
+                // Return final token and user info.
+                var response = new LoginResponse
+                {
+                    User = user,
+                    AccessToken = accessToken
+                };
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error verifying 2FA code");
+                return StatusCode(500);
+            }
+        }
+
+        [HttpPost("resend-2fa")]
+        public IActionResult Resend2FA([FromBody] Resend2FARequest request)
+        {
+            try
+            {
+                // Validate that an email is provided.
+                if (string.IsNullOrWhiteSpace(request.Email))
+                {
+                    return BadRequest(new { message = "Email is required." });
+                }
+
+                // Normalize the email.
+                string email = request.Email.Trim().ToLower();
+
+                // Retrieve the user by email.
+                var user = _context.Users.FirstOrDefault(x => x.Email == email);
+                if (user == null)
+                {
+                    return NotFound(new { message = "User not found." });
+                }
+
+                // Generate a new secure 6-digit 2FA code.
+                var new2FACode = GenerateSecureResetCode();
+
+                // Store the new 2FA code in the cache with a 3-minute expiration.
+                _cache.Set($"2FA_{email}", new2FACode, TimeSpan.FromMinutes(3));
+
+                // Send the new 2FA code via email.
+                _emailService.Send2faEmail(email, new2FACode);
+
+                return Ok(new { message = "A new 2FA code has been sent to your email." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error resending 2FA code");
+                return StatusCode(500, new { message = "Error resending 2FA code." });
+            }
+        }
+
+        // Request model for resending 2FA code.
+        public class Resend2FARequest
+        {
+            public string Email { get; set; }
+        }
 
     }
 }
